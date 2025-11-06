@@ -17,6 +17,8 @@ class _PuzzleCompletedWidgetState extends ConsumerState<PuzzleCompletedWidget> {
   final TextEditingController _nameController = TextEditingController();
   bool _saving = false;
   bool _saved = false;
+  bool _scoreAlreadySaved =
+      false; // Nueva variable para controlar si ya se guardó la puntuación
   VoidCallback? _nameListener;
 
   @override
@@ -44,7 +46,8 @@ class _PuzzleCompletedWidgetState extends ConsumerState<PuzzleCompletedWidget> {
 
   Future<void> _saveScore() async {
     final name = _nameController.text.trim();
-    if (name.isEmpty) return;
+    if (name.isEmpty || _scoreAlreadySaved)
+      return; // No permitir guardar si ya se guardó
 
     setState(() => _saving = true);
 
@@ -66,13 +69,40 @@ class _PuzzleCompletedWidgetState extends ConsumerState<PuzzleCompletedWidget> {
     setState(() {
       _saving = false;
       _saved = success;
+      if (success) {
+        _scoreAlreadySaved = true; // Marcar que ya se guardó la puntuación
+      }
     });
+
+    // Limpiar el campo de nombre después de guardar exitosamente
+    if (success) {
+      // Esperar un poco para que el usuario vea el mensaje de éxito
+      Future.delayed(Duration(milliseconds: 1500), () {
+        if (mounted) {
+          _nameController.clear();
+          // NO resetear _saved ni _scoreAlreadySaved - mantener que ya se guardó
+        }
+      });
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          success ? 'Puntuación guardada' : 'Error guardando puntuación',
+        content: Row(
+          children: [
+            Icon(
+              success ? Icons.check_circle : Icons.error,
+              color: Colors.white,
+            ),
+            SizedBox(width: 8),
+            Text(
+              success
+                  ? '¡Puntuación guardada exitosamente!'
+                  : 'Error guardando puntuación',
+            ),
+          ],
         ),
+        backgroundColor: success ? Colors.green.shade600 : Colors.red.shade600,
+        duration: Duration(seconds: success ? 2 : 3),
       ),
     );
   }
@@ -384,6 +414,8 @@ class _PuzzleCompletedWidgetState extends ConsumerState<PuzzleCompletedWidget> {
                                   // Campo de nombre
                                   TextField(
                                     controller: _nameController,
+                                    enabled:
+                                        !_scoreAlreadySaved, // Deshabilitar si ya se guardó
                                     decoration: InputDecoration(
                                       labelText: 'Tu nombre',
                                       hintText:
@@ -421,7 +453,7 @@ class _PuzzleCompletedWidgetState extends ConsumerState<PuzzleCompletedWidget> {
                                         child: ElevatedButton.icon(
                                           onPressed:
                                               _saving ||
-                                                  _saved ||
+                                                  _scoreAlreadySaved ||
                                                   _nameController.text
                                                       .trim()
                                                       .isEmpty
@@ -438,17 +470,17 @@ class _PuzzleCompletedWidgetState extends ConsumerState<PuzzleCompletedWidget> {
                                                       ),
                                                 )
                                               : Icon(
-                                                  _saved
+                                                  _scoreAlreadySaved
                                                       ? Icons.check
                                                       : Icons.save,
                                                 ),
                                           label: Text(
-                                            _saved
+                                            _scoreAlreadySaved
                                                 ? '¡Guardado!'
                                                 : 'Guardar puntuación',
                                           ),
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: _saved
+                                            backgroundColor: _scoreAlreadySaved
                                                 ? Colors.green.shade600
                                                 : Colors.blue.shade600,
                                             foregroundColor: Colors.white,
